@@ -47,7 +47,7 @@ var run=function(){jQuery(function($){
     var GetULink=function(user,lite){
 		if (lite){
 	        if (user=='-')
-	            return '<b>Аноним</b>';
+	            return '<b user="-">Аноним</b>';
 	        return '<lj user="'+user+'"/>';    
 		}else{
 			var close='<span class="addremove" data-u="'+user+'">[x]</span>';
@@ -56,23 +56,27 @@ var run=function(){jQuery(function($){
 	        return '<span class="ljuser i-ljuser" lj:user="'+user+'"><a>'+user+'</a></span>'+close;    
 		}
     }
+/*	var ShowUserLink=function(){
+		var a=GetUlink($(this).attr('user'));
+		console.log(a,$(this).attr('user'));
+		return a;
+	}*/
     var GetProgress=function(c,m,s){
         return '<img src="http://l-stat.livejournal.com/img/poll/leftbar.gif" height="14"/>'+
             '<img src="http://l-stat.livejournal.com/img/poll/mainbar.gif" height="14" width="'+(Math.floor(800/m*c))+'">'+
             '<img src="http://l-stat.livejournal.com/img/poll/rightbar.gif?v=6803" height="14"/> <b>'+c+'</b> ('+(Math.round(c*1000/s)/10)+'%)';
     }
     var GetLine=function(l,c,m,s){
-            return '<tr><td>'+c+'.</td><td>'+GetULink(l.name)+'</td><td>'+GetProgress(l.comments,m,s)+'</td></tr>';
+            return '<tr><td>'+c+'.</td><td>'+GetULink(l.name,true)+'</td><td>'+GetProgress(l.comments,m,s)+'</td></tr>';
     }
     var Print=function(){
         var p=[{name:'-','comments':-1}];
         for(var id in users)
             p.push(users[id])
         p.sort(SortUsers);
-        text='';
-        max=p[0].comments;
-		summ=0;
-		hide=0;
+        var text='';
+
+        var max=p[0].comments,summ=0,hide=0;
         $(p).each(function(){
 			if (options.ignore[this.name]){
 				hide+=this.comments;
@@ -81,6 +85,7 @@ var run=function(){jQuery(function($){
 			}
         });
 		var limit=0;
+		var curr=0;
         $(p).each(function(){
 			if (!options.ignore[this.name])
 	            if (this.comments>0&&limit++<options.limit){
@@ -91,6 +96,8 @@ var run=function(){jQuery(function($){
 			.find('#lj-comm-allc').html(summ+hide).end()
 			.find('#lj-comm-hidec').html(hide).end()
 			;
+		$('#lj-comm-code').val($('#lj-comm-table').html());
+		$('#lj-comm-table [user]').replaceWith(function(){return GetULink($(this).attr('user'));});
 
     }
 	var LoadIgnoreList=function(){
@@ -141,18 +148,34 @@ var run=function(){jQuery(function($){
 		$('#lj-comm-hideusers').html(a.join(', ')+'.');
 	}
     var ShowForm=function(){
-        var div=$('<div><div id="lj-comm-form"></div><div id="lj-comm-table">Загружаем данные</div></div>').prependTo('#Content')
+        var div=$('<div><div id="lj-comm-form"></div><ul id="lj-comm-menu"><li data-b="table">Таблица</li><li data-b="result">Код вставки</li></ul><div id="lj-comm-blocks"><div id="lj-comm-table">Загружаем данные</div><div id="lj-comm-result">Код для вставки:<br/><textarea id="lj-comm-code"></textarea></div></div>').prependTo('#Content')
 			.css({position:'relative','background-color':'#fff','border':'1px solid silver','z-index':19})
-			.delegate('.addremove','click',AddRemoveUser);
+			.delegate('.addremove','click',AddRemoveUser)
+			.delegate('#lj-comm-menu li','click',function(){
+				$(this).parent().find('li').removeClass('active');
+				$(this).addClass('active');
+				$('#lj-comm-blocks>div:not(#lj-comm-'+$(this).data('b')+')').slideUp();
+				$('#lj-comm-'+$(this).data('b')).slideDown();
+			}).find('#lj-comm-menu>li:first').click().end()
+			.find('#lj-comm-code').focus(function(){this.select()}).end();
 		CreateForm();
         LoadComments(0);
 		button.fadeOut(function(){$(this).remove()})
     }
 	var CreateForm=function(){
-		$('head').append('<style>.addremove{cursor:pointer;top:-5px;position:relative;font-size:8pt;transition:1s;} .addremove:hover{color:red;background-color:#fcc;}</style>')
+		$('head').append('<style>'+
+		'.addremove{cursor:pointer;top:-5px;position:relative;font-size:8pt;transition:1s;}'+
+		'.addremove:hover{color:red;background-color:#fcc;}'+
+		'#lj-comm-menu li{width:49%;padding:0;margin:0;display:block;border:1px solid silver;transition:1s;padding:5px;float:left;}'+
+		'#lj-comm-menu li.active{background-color:#ddd;font-weight:bolder;}'+
+		'#lj-comm-menu li:not(.active):hover{background-color:#ccc; cursor:pointer;}'+
+		'#lj-comm-menu {padding:0;margin:0;clear:both;}'+
+		'#lj-comm-code {height:300px;width:100%;}'+
+		'</style>');
+		
 		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr></table>').appendTo('#lj-comm-form')
 		.find('#lj-comm-limitdiv span').css({padding:'5px',color:'blue',cursor:'pointer'}).click(function(){$('#lj-comm-limit').val($(this).text()).change()}).end()
-		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end();
+		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end()
 		PrintIgnoreList();
 		
 	}
