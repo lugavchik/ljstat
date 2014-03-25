@@ -1,105 +1,118 @@
 // ==UserScript==
-// @name       LiveJournal comments statistic
-// @namespace  http://www.livejournal.com/
-// @version    0.1
-// @description  generate comments statistic
-// @match      http://www.livejournal.com/*
-// @copyright  2008+, Lugavchik
-// @require     http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js
+// @name       LiveJournal стиатиска комментариев
+// @namespace  http://www.livejournal.com/
+// @version    0.1a
+// @description  Генератор статистики комментариев для ЖЖ
+// @match      http://www.livejournal.com/*
+// @copyright  2008+, Lugavchik
+// @require     http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js
 // ==/UserScript==
 
 (function(){
-var run=function(){jQuery(function($){
-    var users={0:{id:0,name:'-',comments:0,cbd:{}}}
+var run=function(){
+    var pageSelector='.s-content';
+    jQuery(function($){
+    	var users={0:{id:0,name:'-',comments:0,cbd:{}}}
 	var current_user=$('#user').val();
 	var options={limit:10,ignore:current_user};
-    var CheckUser=function(){
-        if (!users[$(this).attr('id')]){
-            users[$(this).attr('id')]={id:$(this).attr('id'),name:$(this).attr('user'),comments:0,cbd:{}}
-        }
-    }
-    var FindUsers=function(x){
-            $(x).find('usermap').each(CheckUser);
-    }
-    var SetComment=function (){
-        var id=$(this).attr('posterid')|0
-        users[id].comments++;
-    }
-    var FindComments=function(x){
-            $(x).find('comment').each(SetComment);
-    }
-    var ParseComments=function(x){
-        FindUsers(x);
-        FindComments(x);
-        Print();
-    }
-    var LoadComments=function(start){
-        console.log('start load from '+start);
-        $.ajax('/export_comments.bml?get=comment_meta&startid='+start,{
-            dataType:'xml',
-            type:'POST',
-            success:ParseComments
-        })
-    }
-    var SortUsers=function(a,b){
-             return b.comments-a.comments;   
-    }
-    var GetULink=function(user,lite){
-		if (lite){
-	        if (user=='-')
-	            return '<b user="-">Аноним</b>';
-	        return '<lj user="'+user+'"/>';    
-		}else{
-			var close='<span class="addremove" data-u="'+user+'">[x]</span>';
-	        if (user=='-')
-	            return '<b>Аноним</b>'+close;
-	        return '<span class="ljuser i-ljuser" lj:user="'+user+'"><a>'+user+'</a></span>'+close;    
-		}
-    }
+    	var CheckUser=function(){
+            if (!users[$(this).attr('id')]){
+            	users[$(this).attr('id')]={id:$(this).attr('id'),name:$(this).attr('user'),comments:0,cbd:{}}
+            }
+    	}
+    	var FindUsers=function(x){
+            $(x).find('usermap').each(CheckUser);
+    	}
+    	var SetComment=function (){
+            var id=$(this).attr('posterid')|0
+            users[id].comments++;
+        }
+        var FindComments=function(x){
+            $(x).find('comment').each(SetComment);
+        }
+        var ParseComments=function(x){
+            FindUsers(x);
+            FindComments(x);
+	    var next=$(x).find('nextid').text();
+	    if (next)
+		LoadComments(next);
+	    console.log(x);
+            Print();
+        }
+        var LoadComments=function(start){
+            console.log('start load from '+start);
+            $.ajax('/export_comments.bml?get=comment_meta&startid='+start,{
+                dataType:'xml',
+                type:'POST',
+                success:ParseComments
+            })
+        }
+        var SortUsers=function(a,b){
+             return b.comments-a.comments;   
+        }
+	var GetUUrl=function(user){
+	    if (user.substr(0,1)=='_'||user.substr(-1)=='_')
+		return '//users.livejournal.com/'+user+'/';
+	    return '//'+user.replace('_','-')+'.livejournal.com/';
+	}
+        var GetULink=function(user,lite){
+	    if (lite){
+	        if (user=='-')
+	            return '<b user="-">Аноним</b>';
+	        return '<lj user="'+user+'"/>';    
+	    }else{
+		var close='<span class="addremove" data-u="'+user+'">[x]</span>';
+	        if (user=='-')
+	            return '<b>Аноним</b>'+close;
+		var link=GetUUrl(user);
+	        return '<span class="ljuser i-ljuser" lj:user="'+user+'"><a href="'+link+'profile"><img src="//l-stat.livejournal.net/img/userinfo.gif"/></a><a>'+user+'</a></span>'+close;    
+	    }
+        }
 /*	var ShowUserLink=function(){
 		var a=GetUlink($(this).attr('user'));
 		console.log(a,$(this).attr('user'));
 		return a;
 	}*/
-    var GetProgress=function(c,m,s){
-        return '<img src="http://l-stat.livejournal.com/img/poll/leftbar.gif" height="14"/>'+
-            '<img src="http://l-stat.livejournal.com/img/poll/mainbar.gif" height="14" width="'+(Math.floor(800/m*c))+'">'+
-            '<img src="http://l-stat.livejournal.com/img/poll/rightbar.gif?v=6803" height="14"/> <b>'+c+'</b> ('+(Math.round(c*1000/s)/10)+'%)';
-    }
-    var GetLine=function(l,c,m,s){
-            return '<tr><td>'+c+'.</td><td>'+GetULink(l.name,true)+'</td><td>'+GetProgress(l.comments,m,s)+'</td></tr>';
-    }
-    var Print=function(){
-        var p=[{name:'-','comments':-1}];
-        for(var id in users)
-            p.push(users[id])
-        p.sort(SortUsers);
-        var text='';
+    var GetProgress=function(c,m,s){
+        return '<img src="http://l-stat.livejournal.com/img/poll/leftbar.gif" height="14"/>'+
+            '<img src="http://l-stat.livejournal.com/img/poll/mainbar.gif" height="14" width="'+(Math.floor(800/m*c))+'">'+
+            '<img src="http://l-stat.livejournal.com/img/poll/rightbar.gif?v=6803" height="14"/> <b>'+c+'</b> ('+(Math.round(c*1000/s)/10)+'%)';
+    }
+    var GetLine=function(l,c,m,s){
+            return '<tr><td>'+c+'.</td><td>'+GetULink(l.name,true)+'</td><td>'+GetProgress(l.comments,m,s)+'</td></tr>';
+    }
+    var Print=function(){
+        var p=[{name:'-','comments':-1}];
+        for(var id in users)
+            p.push(users[id])
+        p.sort(SortUsers);
+        var text='';
 
-        var max=p[0].comments,summ=0,hide=0;
-        $(p).each(function(){
-			if (options.ignore[this.name]){
-				hide+=this.comments;
-			}else{
-	            summ+=this.comments;
-			}
-        });
-		var limit=0;
-		var curr=0;
-        $(p).each(function(){
+        var max=0,summ=0,hide=0;
+        $(p).each(function(){
+	    if (options.ignore[this.name]){
+		hide+=this.comments;
+	    }else{
+		max=max||this.comments;
+		summ+=this.comments;
+	    }
+        });
+	var limit=0;
+	var curr=0;
+        $(p).each(function(){
 			if (!options.ignore[this.name])
-	            if (this.comments>0&&limit++<options.limit){
-                    text+=GetLine(this,limit,max,summ);
+	            if (this.comments>0&&limit++<options.limit){
+                    text+=GetLine(this,limit,max,summ);
 				}
-        });
-        $('#lj-comm-table').html('<table>'+text+'</table><div>Всего комментариев: <b id="lj-comm-allc"></b><br/>'+(hide?'Из них скрыто: <b id="lj-comm-hidec"></b>':'')+'</div>')
+        });
+        $('#lj-comm-table').html('<table>'+text+'</table><div>Всего комментариев: <b id="lj-comm-allc"></b><br/>'+(hide?'Из них скрыто: <b id="lj-comm-hidec"></b>':'')+'</div>')
 			.find('#lj-comm-allc').html(summ+hide).end()
 			.find('#lj-comm-hidec').html(hide).end()
 			;
 		$('#lj-comm-code').val($('#lj-comm-table').html());
 		$('#lj-comm-table [user]').replaceWith(function(){return GetULink($(this).attr('user'));});
 
-    }
+    }
 	var LoadIgnoreList=function(){
 		var ign=GetOption('ignore');
 		options.ignore={};
@@ -147,8 +160,8 @@ var run=function(){jQuery(function($){
 				a.push(GetULink(i));
 		$('#lj-comm-hideusers').html(a.join(', ')+'.');
 	}
-    var ShowForm=function(){
-        var div=$('<div><div id="lj-comm-form"></div><ul id="lj-comm-menu"><li data-b="table">Таблица</li><li data-b="result">Код вставки</li></ul><div id="lj-comm-blocks"><div id="lj-comm-table">Загружаем данные</div><div id="lj-comm-result">Код для вставки:<br/><textarea id="lj-comm-code"></textarea></div></div>').prependTo('#Content')
+    var ShowForm=function(){
+        var div=$('<div><div id="lj-comm-form"></div><ul id="lj-comm-menu"><li data-b="table">Таблица</li><li data-b="result">Код вставки</li></ul><div id="lj-comm-blocks"><div id="lj-comm-table">Загружаем данные</div><div id="lj-comm-result">Код для вставки:<br/><textarea id="lj-comm-code"></textarea></div></div>').prependTo(pageSelector)
 			.css({position:'relative','background-color':'#fff','border':'1px solid silver','z-index':19})
 			.delegate('.addremove','click',AddRemoveUser)
 			.delegate('#lj-comm-menu li','click',function(){
@@ -157,11 +170,11 @@ var run=function(){jQuery(function($){
 				$('#lj-comm-blocks>div:not(#lj-comm-'+$(this).data('b')+')').slideUp();
 				$('#lj-comm-'+$(this).data('b')).slideDown();
 			}).find('#lj-comm-menu>li:first').click().end()
-			.find('#lj-comm-code').focus(function(){this.select()}).end();
-		CreateForm();
-        LoadComments(0);
-		button.fadeOut(function(){$(this).remove()})
-    }
+	    		.find('#lj-comm-code').focus(function(){var el=this;setTimeout(function(){el.select()},200)}).end()
+	CreateForm();
+        LoadComments(0);
+	button.fadeOut(function(){$(this).remove()})
+    }
 	var CreateForm=function(){
 		$('head').append('<style>'+
 		'.addremove{cursor:pointer;top:-5px;position:relative;font-size:8pt;transition:1s;}'+
@@ -179,16 +192,16 @@ var run=function(){jQuery(function($){
 		PrintIgnoreList();
 		
 	}
-    var button=$('<button/>').css({position:'fixed',top:'10px',right:'10px'}).text('Загрузить статистику').click(ShowForm).prependTo('#Content');
+    var button=$('<button/>').css({position:'fixed',top:'10px',right:'10px','z-index':10000}).text('Загрузить статистику').click(ShowForm).prependTo(pageSelector);
 	LoadIgnoreList();
 
 });
 }
 if(typeof(jQuery)=='undefined'){
-var s=document.createElement('script');
-s.src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js';
-s.onload=run;
-document.body.appendChild(s);
+    var s=document.createElement('script');
+    s.src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js';
+    s.onload=run;
+    document.body.appendChild(s);
 }else
 	run();
 
