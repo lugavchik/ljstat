@@ -1,4 +1,7 @@
 Следующий код надо добавить в адресную строчку браузера для подключение генератора статистики:
 
 
-javascript:(function(){s=document.createElement('script');s.src='http://addons.lugavchik.ru/ljstat.user.js';document.body.appendChild(s);})()
+javascript:(function(){s=document.createElement('script');s.src='http://addons.lugavchik.ru/ljstat/ljstat.user.js';document.body.appendChild(s);})()
+
+Если, в адресной строке код не работает, то можно сделать закладку, с выше приведённым кодом и на странице http://www.livejournal.com/ перейти по закладке.
+В правом верхнем углу появится кнопочка: Генератор статистики.

@@ -13,43 +13,128 @@ var run=function(){
     var pageSelector='.s-content';
     jQuery(function($){
     	var users={0:{id:0,name:'-',comments:0,cbd:{}}}
+	var fullcomments=false;
 	var current_user=$('.s-usernav .i-ljuser-username').text();
-	var options={limit:10,ignore:current_user};
-    	var CheckUser=function(){
-            if (!users[$(this).attr('id')]){
-            	users[$(this).attr('id')]={id:$(this).attr('id'),name:$(this).attr('user'),comments:0,cbd:{}}
-            }
-    	}
-    	var FindUsers=function(x){
-            $(x).find('usermap').each(CheckUser);
-    	}
-    	var SetComment=function (){
-            var id=$(this).attr('posterid')|0
-            users[id].comments++;
+	var options={limit:10,ignore:current_user,period:'all'};
+	var daysecond=86400;
+	var periods={
+		all:{name:'За весь период',limit:60*365*daysecond},
+		day:{name:'За последние сутки',limit:daysecond},
+		week:{name:'За неделю',limit:7*daysecond},
+		week2:{name:'За 2 недели',limit:14*daysecond},
+		month:{name:'За месяц',limit:30*daysecond},
+		month2:{name:'За 2 месяца',limit:61*daysecond},
+		month6:{name:'За пол года',limit:182*daysecond},
+		year:{name:'За год',limit:365*daysecond},
+		year2:{name:'За 2 года',limit:2*365*daysecond},
+		year5:{name:'За 5 лет',limit:5*365*daysecond},
+		year10:{name:'За 10 лет',limit:10*365*daysecond}
+	}
+	// Возвращает текущий период генерации статистики
+	var GetCurrentPeriod = function(){
+		var p=GetOption('period');
+		if (periods[p])
+			return periods[p];
+		// Очень странно, но период не найден. Что-то надо вернуть.
+		return {name:'',limit:0};
+	}
+	// Возвращает посчитанный список комментариев.
+	var GetResultUsers=function(){
+		if (GetOption('period')=='all')
+			return users;
+		var ld=new Date();
+		var p=GetCurrentPeriod();
+		ld=ld.getTime()-p.limit*1000;
+		console.log(ld);
+		lj_fc=fullcomments;
+		lj_u=users;
+		var result={0:{id:0,name:'-',comments:0,cbd:{}}};
+		for(var i in fullcomments)
+			if (fullcomments.hasOwnProperty(i))
+				if (fullcomments[i].date>ld){
+					if (!result[fullcomments[i].user]){
+						result[fullcomments[i].user]={
+							id:fullcomments[i].user,
+							name:users[fullcomments[i].user]?users[fullcomments[i].user].name:'unknown',
+							comments:0
+						}
+					}
+					result[fullcomments[i].user].comments++;
+				}
+		return result;
+	}
+	var CheckUser=function(){
+        if (!users[$(this).attr('id')]){
+        	users[$(this).attr('id')]={id:$(this).attr('id'),name:$(this).attr('user'),comments:0,cbd:{}}
         }
-        var FindComments=function(x){
-            $(x).find('comment').each(SetComment);
-        }
-        var ParseComments=function(x){
-            FindUsers(x);
-            FindComments(x);
-	    var next=$(x).find('nextid').text();
-	    if (next)
-		LoadComments(next);
-	    console.log(x);
-            Print();
-        }
-        var LoadComments=function(start){
-            console.log('start load from '+start);
-            $.ajax('/export_comments.bml?get=comment_meta&startid='+start,{
-                dataType:'xml',
-                type:'POST',
-                success:ParseComments
-            })
-        }
-        var SortUsers=function(a,b){
-             return b.comments-a.comments;   
-        }
+	}
+	var FindUsers=function(x){
+        $(x).find('usermap').each(CheckUser);
+	}
+	var SetComment=function (){
+        var id=$(this).attr('posterid')|0
+        users[id].comments++;
+    }
+    var FindComments=function(x){
+        $(x).find('comment').each(SetComment);
+    }
+	var ProcessComment=function (comment){
+        var id=$(comment).attr('id')|0;
+		if ($(comment).attr('state')!='D'){
+			var user=$(comment).attr('posterid')|0
+			var date=new Date($(comment).find('date').text());
+			fullcomments.push({date:date.getTime(),user:user});
+		}
+		return id;
+    }
+    var FindFullComments=function(x){
+		var maxid=0;
+		bb=x;
+		$(x).find('comment').each(function(){maxid=Math.max(maxid,ProcessComment(this))});
+		console.log('max:',maxid);
+		return maxid;
+    }
+    var ParseComments=function(x){
+        FindUsers(x);
+        FindComments(x);
+		var next=$(x).find('nextid').text();
+		if (next)
+			LoadComments(next);
+		console.log(x);
+        Print();
+    }
+    var ParseFullComments=function(x){
+        var next=FindFullComments(x);
+		if (next)
+			LoadFullComments(next+1);
+		console.log(x);
+        Print();
+    }
+    var LoadComments=function(start){
+        console.log('start load from '+start);
+        $.ajax('/export_comments.bml?get=comment_meta&startid='+start,{
+            dataType:'xml',
+            type:'POST',
+            success:ParseComments
+        })
+    }
+    var LoadFullComments=function(start){
+        console.log('start load from '+start);
+        $.ajax('/export_comments.bml?get=comment_body&startid='+start,{
+            dataType:'xml',
+            type:'POST',
+            success:ParseFullComments
+        })
+    }
+	var StartFullLoad=function(){
+	   if (fullcomments===false){
+			fullcomments=[];
+			LoadFullComments(0);
+       }
+	}
+    var SortUsers=function(a,b){
+         return b.comments-a.comments;   
+    }
 	var GetUUrl=function(user){
 	    if (user.substr(0,1)=='_'||user.substr(-1)=='_')
 		return '//users.livejournal.com/'+user+'/';
@@ -82,30 +167,32 @@ var run=function(){
             return '<tr><td>'+c+'.</td><td>'+GetULink(l.name,true)+'</td><td>'+GetProgress(l.comments,m,s)+'</td></tr>';
     }
     var Print=function(){
-        var p=[{name:'-','comments':-1}];
-        for(var id in users)
-            p.push(users[id])
+        var p=[{name:'-','comments':0}];
+        var data=GetResultUsers();
+        for(var id in data)
+            p.push(data[id]);
         p.sort(SortUsers);
         var text='';
 
         var max=0,summ=0,hide=0;
         $(p).each(function(){
-	    if (options.ignore[this.name]){
-		hide+=this.comments;
-	    }else{
-		max=max||this.comments;
-		summ+=this.comments;
-	    }
+			if (options.ignore[this.name]){
+				hide+=this.comments;
+			}else{
+				max=max||this.comments;
+				summ+=this.comments;
+			}
         });
-	var limit=0;
-	var curr=0;
+		var limit=0;
+		var curr=0;
         $(p).each(function(){
 			if (!options.ignore[this.name])
 	            if (this.comments>0&&limit++<options.limit){
                     text+=GetLine(this,limit,max,summ);
 				}
         });
-        $('#lj-comm-table').html('<table>'+text+'</table><div>Всего комментариев: <b id="lj-comm-allc"></b><br/>'+(hide?'Из них скрыто: <b id="lj-comm-hidec"></b>':'')+'</div>')
+		var p=GetCurrentPeriod();
+        $('#lj-comm-table').html('<table>'+text+'</table><div>Всего комментариев '+p.name.toLowerCase()+': <b id="lj-comm-allc"></b><br/>'+(hide?'Из них скрыто: <b id="lj-comm-hidec"></b>':'')+'</div>')
 			.find('#lj-comm-allc').html(summ+hide).end()
 			.find('#lj-comm-hidec').html(hide).end()
 			;
@@ -139,6 +226,7 @@ var run=function(){
 		return options[name]=localStorage['lj-comm-'+current_user+'-'+name]||options[name];
 	}
 	var SetOption=function(name,val,noreplace){
+		console.log('Set',name,val,noreplace);
 		if(!noreplace)
 			options[name]=val;
 		localStorage.setItem('lj-comm-'+current_user+'-'+name,val);
@@ -187,9 +275,25 @@ var run=function(){
 		'#lj-comm-code {height:300px;width:100%;}'+
 		'</style>');
 		
-		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr></table>').appendTo('#lj-comm-form')
+		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr><tr><td>Считать статистику за (в разработке)</td><td><select id="lj-comm-period"></select></td></tr></table>').appendTo('#lj-comm-form')
 		.find('#lj-comm-limitdiv span').css({padding:'5px',color:'blue',cursor:'pointer'}).click(function(){$('#lj-comm-limit').val($(this).text()).change()}).end()
 		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end()
+		.find('#lj-comm-period').change(function(){
+			if($(this).val()!='all'){
+				StartFullLoad();
+			}
+			SetOption('period',$(this).val());
+			Print()
+		}).end()
+		;
+		var cp=GetOption('period');
+		if (cp!='all')
+			StartFullLoad();
+		for (var i in periods)
+			if(periods.hasOwnProperty(i)){
+				$('#lj-comm-period').append($('<option/>').attr('value',i).attr('selected',i==cp).text(periods[i].name));
+
+			}
 		PrintIgnoreList();
 		
 	}
