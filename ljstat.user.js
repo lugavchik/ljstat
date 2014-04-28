@@ -13,7 +13,7 @@ var run=function(){
     var pageSelector='.s-content';
     jQuery(function($){
     	var users={0:{id:0,name:'-',comments:0,cbd:{}}}
-	var current_user=$('#user').val();
+	var current_user=$('.s-usernav .i-ljuser-username').text();
 	var options={limit:10,ignore:current_user};
     	var CheckUser=function(){
             if (!users[$(this).attr('id')]){
@@ -180,13 +180,14 @@ var run=function(){
 		'.addremove{cursor:pointer;top:-5px;position:relative;font-size:8pt;transition:1s;}'+
 		'.addremove:hover{color:red;background-color:#fcc;}'+
 		'#lj-comm-menu li{width:49%;padding:0;margin:0;display:block;border:1px solid silver;transition:1s;padding:5px;float:left;}'+
+		'#lj-comm-table {clear:both}'+
 		'#lj-comm-menu li.active{background-color:#ddd;font-weight:bolder;}'+
 		'#lj-comm-menu li:not(.active):hover{background-color:#ccc; cursor:pointer;}'+
 		'#lj-comm-menu {padding:0;margin:0;clear:both;}'+
 		'#lj-comm-code {height:300px;width:100%;}'+
 		'</style>');
 		
-		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr></table>').appendTo('#lj-comm-form')
+		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr></table>').appendTo('#lj-comm-form')
 		.find('#lj-comm-limitdiv span').css({padding:'5px',color:'blue',cursor:'pointer'}).click(function(){$('#lj-comm-limit').val($(this).text()).change()}).end()
 		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end()
 		PrintIgnoreList();
