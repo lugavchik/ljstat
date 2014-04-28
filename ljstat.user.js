@@ -14,7 +14,19 @@ var run=function(){
     jQuery(function($){
     	var users={0:{id:0,name:'-',comments:0,cbd:{}}}
 	var current_user=$('.s-usernav .i-ljuser-username').text();
-	var options={limit:10,ignore:current_user};
+	var options={limit:10,ignore:current_user,period:'all'};
+	var daysecond=86400;
+	var periods={
+		all:{name:'За весь период',limit:60*365*daysecond},
+		day:{name:'За последние сутки',limit:daysecond},
+		week:{name:'За неделю',limit:7*daysecond},
+		week2:{name:'За 2 недели',limit:14*daysecond},
+		month:{name:'За месяц',limit:30*daysecond},
+		month2:{name:'За 2 месяца',limit:61*daysecond},
+		month6:{name:'За пол года',limit:182*daysecond},
+		year:{name:'За год',limit:365*daysecond}
+	}
+
     	var CheckUser=function(){
             if (!users[$(this).attr('id')]){
             	users[$(this).attr('id')]={id:$(this).attr('id'),name:$(this).attr('user'),comments:0,cbd:{}}
@@ -139,6 +151,7 @@ var run=function(){
 		return options[name]=localStorage['lj-comm-'+current_user+'-'+name]||options[name];
 	}
 	var SetOption=function(name,val,noreplace){
+		console.log('Set',name,val,noreplace);
 		if(!noreplace)
 			options[name]=val;
 		localStorage.setItem('lj-comm-'+current_user+'-'+name,val);
@@ -187,9 +200,17 @@ var run=function(){
 		'#lj-comm-code {height:300px;width:100%;}'+
 		'</style>');
 		
-		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr></table>').appendTo('#lj-comm-form')
+		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr><tr><td>Считать статистику за (в разработке)</td><td><select id="lj-comm-period"></select></td></tr></table>').appendTo('#lj-comm-form')
 		.find('#lj-comm-limitdiv span').css({padding:'5px',color:'blue',cursor:'pointer'}).click(function(){$('#lj-comm-limit').val($(this).text()).change()}).end()
 		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end()
+		.find('#lj-comm-period').change(function(){console.log(1);SetOption('period',$(this).val());Print()}).end()
+		;
+		var cp=GetOption('period');
+		for (var i in periods)
+			if(periods.hasOwnProperty(i)){
+				$('#lj-comm-period').append($('<option/>').attr('value',i).attr('selected',i==cp).text(periods[i].name));
+
+			}
 		PrintIgnoreList();
 		
 	}
