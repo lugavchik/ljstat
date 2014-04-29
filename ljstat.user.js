@@ -30,6 +30,7 @@ var run=function(){
 		year5:{name:'За 5 лет',limit:5*365*daysecond},
 		year10:{name:'За 10 лет',limit:10*365*daysecond}
 	}
+	var footer="<div style='text-align:center'>Статистика сделана скриптом от <lj user='lugavchik' title='Лугавчика'/>.<br/><a href='http://lugavchik.ru/lj/comments.php'>Генератор статистики ЖЖ</a> прячется тут.</div>"
 	// Возвращает текущий период генерации статистики
 	var GetCurrentPeriod = function(){
 		var p=GetOption('period');
@@ -196,7 +197,7 @@ var run=function(){
 			.find('#lj-comm-allc').html(summ+hide).end()
 			.find('#lj-comm-hidec').html(hide).end()
 			;
-		$('#lj-comm-code').val($('#lj-comm-table').html());
+		$('#lj-comm-code').val($('#lj-comm-table').html()+footer);
 		$('#lj-comm-table [user]').replaceWith(function(){return GetULink($(this).attr('user'));});
 
     }
@@ -263,6 +264,7 @@ var run=function(){
         LoadComments(0);
 	button.fadeOut(function(){$(this).remove()})
     }
+    // Форма настроек
 	var CreateForm=function(){
 		$('head').append('<style>'+
 		'.addremove{cursor:pointer;top:-5px;position:relative;font-size:8pt;transition:1s;}'+
