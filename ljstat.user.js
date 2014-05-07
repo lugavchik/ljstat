@@ -161,7 +161,7 @@ var run=function(){
 	}*/
     var GetProgress=function(c,m,s){
         return '<img src="http://l-stat.livejournal.com/img/poll/leftbar.gif" height="14"/>'+
-            '<img src="http://l-stat.livejournal.com/img/poll/mainbar.gif" height="14" width="'+(Math.floor(800/m*c))+'">'+
+            '<img src="http://l-stat.livejournal.com/img/poll/mainbar.gif" style="height:14px;" height="14" width="'+(Math.floor(800/m*c))+'">'+
             '<img src="http://l-stat.livejournal.com/img/poll/rightbar.gif?v=6803" height="14"/> <b>'+c+'</b> ('+(Math.round(c*1000/s)/10)+'%)';
     }
     var GetLine=function(l,c,m,s){
