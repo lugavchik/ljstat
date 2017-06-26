@@ -1,16 +1,17 @@
 // ==UserScript==
-// @name       LiveJournal стиатиска комментариев
+// @name       LiveJournal статистика комментариев
 // @namespace  http://www.livejournal.com/
-// @version    0.1a
+// @version    0.1.2
 // @description  Генератор статистики комментариев для ЖЖ
 // @match      http://www.livejournal.com/*
 // @copyright  2008+, Lugavchik
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js
+// @updateURL	http://addons.lugavchik.ru/ljstat/ljstat.user.js
 // ==/UserScript==
 
 (function(){
 var run=function(){
-    var pageSelector='.s-content';
+    var pageSelector='.s-body';
     jQuery(function($){
     	var users={0:{id:0,name:'-',comments:0,cbd:{}}}
 	var fullcomments=false;
@@ -98,21 +99,25 @@ var run=function(){
     var ParseComments=function(x){
         FindUsers(x);
         FindComments(x);
-		var next=$(x).find('nextid').text();
-		if (next)
-			LoadComments(next);
-		console.log(x);
+	var next=$(x).find('nextid').text();
+	if (next)
+		LoadComments(next);
+	else
+	    form.find('.status').text('Загружено');
+	console.log(x);
         Print();
     }
     var ParseFullComments=function(x){
         var next=FindFullComments(x);
-		if (next)
-			LoadFullComments(next+1);
-		console.log(x);
+	if (next)
+		LoadFullComments(next+1);
+	else
+	    form.find('.status').text('Загружено');
         Print();
-    }
+    };
     var LoadComments=function(start){
         console.log('start load from '+start);
+	form.find('.status').text('Загружаем комментарии с '+start)
         $.ajax('/export_comments.bml?get=comment_meta&startid='+start,{
             dataType:'xml',
             type:'POST',
@@ -121,6 +126,7 @@ var run=function(){
     }
     var LoadFullComments=function(start){
         console.log('start load from '+start);
+	form.find('.status').text('Загружаем полные комментарии с '+start)
         $.ajax('/export_comments.bml?get=comment_body&startid='+start,{
             dataType:'xml',
             type:'POST',
@@ -227,43 +233,44 @@ var run=function(){
 		return options[name]=localStorage['lj-comm-'+current_user+'-'+name]||options[name];
 	}
 	var SetOption=function(name,val,noreplace){
-		console.log('Set',name,val,noreplace);
-		if(!noreplace)
-			options[name]=val;
-		localStorage.setItem('lj-comm-'+current_user+'-'+name,val);
+	    if(!noreplace)
+		options[name]=val;
+	    localStorage.setItem('lj-comm-'+current_user+'-'+name,val);
 	}
 	var AddRemoveUser=function(){
-		var u=$(this).data('u');
-		if (options.ignore.hasOwnProperty(u))
-			delete options.ignore[u];
-		else
-			options.ignore[u]=true;
-		PrintIgnoreList();
-		SaveIgnoreList();
-		Print();
+	    var u=$(this).data('u');
+	    if (options.ignore.hasOwnProperty(u))
+		delete options.ignore[u];
+	    else
+		options.ignore[u]=true;
+	    PrintIgnoreList();
+	    SaveIgnoreList();
+	    Print();
 	}
 	var PrintIgnoreList=function(){
-		var a=[];
-		for(var i in options.ignore)
-			if (options.ignore.hasOwnProperty(i))
-				a.push(GetULink(i));
-		$('#lj-comm-hideusers').html(a.join(', ')+'.');
+	    var a=[];
+	    for(var i in options.ignore)
+		if (options.ignore.hasOwnProperty(i))
+		    a.push(GetULink(i));
+	    var last=a.length>0?(a.length>1?' и ':'')+a.pop():'';
+	    $('#lj-comm-hideusers').html(a.join(', ')+last+(a.length>0?'.':''));
 	}
     var ShowForm=function(){
         var div=$('<div><div id="lj-comm-form"></div><ul id="lj-comm-menu"><li data-b="table">Таблица</li><li data-b="result">Код вставки</li></ul><div id="lj-comm-blocks"><div id="lj-comm-table">Загружаем данные</div><div id="lj-comm-result">Код для вставки:<br/><textarea id="lj-comm-code"></textarea></div></div>').prependTo(pageSelector)
-			.css({position:'relative','background-color':'#fff','border':'1px solid silver','z-index':19})
-			.delegate('.addremove','click',AddRemoveUser)
-			.delegate('#lj-comm-menu li','click',function(){
-				$(this).parent().find('li').removeClass('active');
-				$(this).addClass('active');
-				$('#lj-comm-blocks>div:not(#lj-comm-'+$(this).data('b')+')').slideUp();
-				$('#lj-comm-'+$(this).data('b')).slideDown();
-			}).find('#lj-comm-menu>li:first').click().end()
-	    		.find('#lj-comm-code').focus(function(){var el=this;setTimeout(function(){el.select()},200)}).end()
+		.css({position:'relative','background-color':'#fff','border':'1px solid silver','z-index':19})
+		.delegate('.addremove','click',AddRemoveUser)
+		.delegate('#lj-comm-menu li','click',function(){
+			$(this).parent().find('li').removeClass('active');
+			$(this).addClass('active');
+			$('#lj-comm-blocks>div:not(#lj-comm-'+$(this).data('b')+')').slideUp();
+			$('#lj-comm-'+$(this).data('b')).slideDown();
+		}).find('#lj-comm-menu>li:first').click().end()
+		.find('#lj-comm-code').focus(function(){var el=this;setTimeout(function(){el.select()},200)}).end()
 	CreateForm();
         LoadComments(0);
 	button.fadeOut(function(){$(this).remove()})
     }
+    var form=$('<div></div>');
     // Форма настроек
 	var CreateForm=function(){
 		$('head').append('<style>'+
@@ -277,7 +284,11 @@ var run=function(){
 		'#lj-comm-code {height:300px;width:100%;}'+
 		'</style>');
 		
-		$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv"><input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr><tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td></tr><tr class="nomore"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr><tr><td>Считать статистику за (в разработке)</td><td><select id="lj-comm-period"></select></td></tr></table>').appendTo('#lj-comm-form')
+		form=$('<table><tr><td>Показать не более:</td><td><div id="lj-comm-limitdiv">'+
+'<input type="number" id="lj-comm-limit" min="5" step="5" max="500"/><span>10</span><span>15</span><span>25</span><span>50</span><span>100</span></div></td></tr>'+
+'<tr><td>Скрытые пользователи:</td><td><div id="lj-comm-hideusers"></div></td>'+
+'</tr><tr class="nomore" style="display:none"><td colspan="2"><div id="morelink">Показать больше настроек</div></td></tr>'+
+'<tr><td>Считать статистику за</td><td><select id="lj-comm-period"></select></td></tr><tr><td>Состояние</td><td class="status"></td></tr></table>').appendTo('#lj-comm-form')
 		.find('#lj-comm-limitdiv span').css({padding:'5px',color:'blue',cursor:'pointer'}).click(function(){$('#lj-comm-limit').val($(this).text()).change()}).end()
 		.find('#lj-comm-limit').val(GetOption('limit')).change(function(){SetOption('limit',$(this).val());Print()}).end()
 		.find('#lj-comm-period').change(function(){
@@ -286,8 +297,7 @@ var run=function(){
 			}
 			SetOption('period',$(this).val());
 			Print()
-		}).end()
-		;
+		}).end();
 		var cp=GetOption('period');
 		if (cp!='all')
 			StartFullLoad();
@@ -299,7 +309,7 @@ var run=function(){
 		PrintIgnoreList();
 		
 	}
-    var button=$('<button/>').css({position:'fixed',top:'10px',right:'10px','z-index':10000}).text('Загрузить статистику').click(ShowForm).prependTo(pageSelector);
+    var button=$('<button/>').css({position:'absolute',top:'16px',right:'400px','z-index':10000}).text('Загрузить статистику').click(ShowForm).prependTo(pageSelector);
 	LoadIgnoreList();
 
 });
